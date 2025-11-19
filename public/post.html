@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Album Viewer</title>
+
+<link rel="stylesheet" href="style.css">
+
+<style>
+body{background:#111;color:#fff;font-family:Arial,Helvetica,sans-serif}
+.container{max-width:900px;margin:16px auto;padding:12px}
+.main-img{width:100%;border-radius:8px;display:block}
+.thumbs{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.thumb{width:100px;height:70px;object-fit:cover;border-radius:6px;cursor:pointer;opacity:0.7}
+.thumb.active{outline:3px solid #22ffaa;opacity:1}
+.controls{display:flex;gap:8px;margin-top:8px;align-items:center}
+.meta{color:#bbb;margin-top:8px}
+.related-grid{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.related-card{width:150px}
+.related-card img{width:100%;height:90px;object-fit:cover;border-radius:6px}
+
+/* Buttons */
+.btnx{
+  padding:8px 12px;
+  background:#1a1a1a;
+  border:1px solid #333;
+  border-radius:6px;
+  color:#fff;
+  cursor:pointer;
+  text-decoration:none;
+}
+.btnx.green{border-color:#22ff99;color:#22ff99}
+.btnx.blue{border-color:#3399ff;color:#3399ff}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+  <h1 id="title">Loading...</h1>
+
+  <div class="controls">
+
+    <a id="watchBtn" class="btnx green" target="_blank">Watch Now</a>
+
+    <a id="directDLBtn" class="btnx blue" target="_blank">Download File</a>
+
+    <a id="zipBtn" class="btnx" target="_blank">Download Album ZIP</a>
+
+    <button id="likeBtn" class="btnx">
+      ❤️ Like <span id="likeCount">0</span>
+    </button>
+
+    <div style="margin-left:auto;color:#aaa" id="views">0 views</div>
+
+  </div>
+
+  <img id="mainImg" class="main-img" src="">
+  <div class="thumbs" id="thumbs"></div>
+
+  <div class="meta" id="desc"></div>
+
+  <h3 style="margin-top:20px">Related Albums</h3>
+  <div id="related" class="related-grid"></div>
+
+</div>
+
+<script>
+function qs(n){ return new URL(location.href).searchParams.get(n); }
+let album = null;
+let currentIndex = 0;
+
+async function load(){
+  const id = qs("id");
+  if (!id) return alert("Album ID missing");
+
+  const res = await fetch("/api/album/" + id);
+  const j = await res.json();
+  if (j.error) return alert("Album not found");
+
+  album = j.album;
+
+  // ------- BASIC INFO -------
+  document.getElementById("title").innerText = album.title;
+  document.getElementById("desc").innerText = album.description || "";
+
+  document.getElementById("likeCount").innerText = album.likes.length;
+  document.getElementById("views").innerText = album.views + " views";
+
+  // ------- WATCH + DOWNLOAD -------
+  document.getElementById("watchBtn").href = album.watchLink || "#";
+  document.getElementById("directDLBtn").href = album.downloadLink || "#";
+
+  document.getElementById("zipBtn").href =
+    "/api/album/" + id + "/download";
+
+  // ------- THUMBNAILS -------
+  const thumbs = document.getElementById("thumbs");
+  thumbs.innerHTML = "";
+
+  album.images.forEach((im, index) => {
+    const t = document.createElement("img");
+    t.src = im.url;
+    t.className = "thumb";
+    t.onclick = () => show(index);
+    if (index === 0) t.classList.add("active");
+    thumbs.appendChild(t);
+  });
+
+  if (album.images.length) show(0);
+
+  // ------- RELATED -------
+  const rel = j.related || [];
+  const box = document.getElementById("related");
+  box.innerHTML = "";
+
+  rel.forEach(r => {
+    const d = document.createElement("div");
+    d.className = "related-card";
+    d.innerHTML = `
+      <a href="post.html?id=${r._id}">
+        <img src="${r.images?.[0]?.url || ""}">
+        <div style="color:#ddd;font-size:13px">${r.title}</div>
+      </a>
+    `;
+    box.appendChild(d);
+  });
+
+  // increment album view count
+  fetch("/api/view/album/" + id, { method:"POST" })
+    .then(r=>r.json())
+    .then(d=>{
+      if (d.views !== undefined)
+        document.getElementById("views").innerText = d.views + " views";
+    });
+}
+
+function show(i){
+  currentIndex = i;
+  const im = album.images[i];
+  document.getElementById("mainImg").src = im.url;
+
+  document.querySelectorAll(".thumb").forEach((t, idx) =>
+    t.classList.toggle("active", idx === i)
+  );
+}
+
+document.getElementById("likeBtn").onclick = async () => {
+  const id = qs("id");
+  const res = await fetch("/api/like/album/" + id, { method:"POST" });
+  const j = await res.json();
+  if (j.likes !== undefined)
+    document.getElementById("likeCount").innerText = j.likes;
+};
+
+load();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Admin Dashboard</title>
+
+<style>
+body {
+  background: #0a0a0a;
+  color: #eee;
+  font-family: Poppins, sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+
+h2 {
+  color: #00ffc6;
+  margin-top: 40px;
+}
+
+.card {
+  background: #111;
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 35px;
+  border: 1px solid #222;
+  box-shadow: 0 0 15px rgba(0,255,200,0.1);
+}
+
+input, textarea {
+  width: 100%;
+  background: #1b1b1b;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 10px;
+  color: #eee;
+  margin-top: 7px;
+  margin-bottom: 15px;
+}
+
+button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #00ffc6;
+  color: #000;
+  font-weight: bold;
+  cursor: pointer;
+  transition: .2s;
+}
+
+button:hover { background: #00d9aa; }
+.danger { background: #ff3d3d !important; color:#fff !important; }
+.list-item {
+  background: #111;
+  border: 1px solid #222;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.small-img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-right: 12px;
+}
+.topbar {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.logout {
+  background:#ff3d3d;
+  color:#fff;
+  padding:10px 16px;
+  border-radius:6px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+  <h1>Admin Dashboard</h1>
+  <button class="logout" onclick="logout()">Logout</button>
+</div>
+
+<!-- ========================= -->
+<!-- UPLOAD ALBUM -->
+<!-- ========================= -->
+<div class="card">
+  <h2>Upload New Album</h2>
+
+  <form id="uploadForm" enctype="multipart/form-data">
+    <label>Title</label>
+    <input name="title" required />
+
+    <label>Description</label>
+    <textarea name="description"></textarea>
+
+    <label>Category</label>
+    <input name="category" />
+
+    <label>Tags (comma separated)</label>
+    <input name="tags" />
+
+    <label>Watch Link</label>
+    <input name="watchLink" />
+
+    <label>Download Link</label>
+    <input name="downloadLink" />
+
+    <label>Extra Links (one per line)</label>
+    <textarea name="extraLinks"></textarea>
+
+    <label>Select Photos</label>
+    <input type="file" name="photos" multiple required />
+
+    <button type="submit">Upload Album</button>
+  </form>
+
+  <div id="uploadStatus"></div>
+</div>
+
+<!-- ========================= -->
+<!-- MANAGE IMAGES -->
+<!-- ========================= -->
+<div class="card">
+  <h2>Manage Images</h2>
+  <div id="imagesList">Loading...</div>
+</div>
+
+<!-- ========================= -->
+<!-- MANAGE ALBUMS -->
+<!-- ========================= -->
+<div class="card">
+  <h2>Manage Albums</h2>
+  <div id="albumsList">Loading...</div>
+</div>
+
+<!-- ========================= -->
+<!-- SITE SETTINGS -->
+<!-- ========================= -->
+<div class="card">
+  <h2>Site Settings</h2>
+
+  <form id="settingsForm">
+    <label>Site Name</label>
+    <input id="siteName" name="siteName" />
+
+    <button type="submit">Save Settings</button>
+  </form>
+</div>
+
+<script>
+// ===========================
+// UPLOAD ALBUM
+// ===========================
+uploadForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fd = new FormData(uploadForm);
+
+  const r = await fetch("/api/upload", { method: "POST", body: fd });
+  const res = await r.json();
+
+  uploadStatus.innerHTML = res.success
+    ? "<span style='color:#0f0'>Uploaded ✔</span>"
+    : "<span style='color:red'>Failed</span>";
+
+  loadImages();
+  loadAlbums();
+});
+
+// ===========================
+// LOAD IMAGES
+// ===========================
+async function loadImages() {
+  const r = await fetch("/api/images");
+  const d = await r.json();
+
+  imagesList.innerHTML = "";
+
+  d.images.forEach((img) => {
+    const div = document.createElement("div");
+    div.className = "list-item";
+
+    div.innerHTML = `
+      <div style="display:flex;align-items:center;">
+        <img src="${img.url}" class="small-img">
+        <div>
+          <b>${img.albumTitle}</b><br>
+          ID: ${img.imageId}
+        </div>
+      </div>
+
+      <button class="danger" onclick="deleteImage('${img.imageId}')">Delete</button>
+    `;
+
+    imagesList.appendChild(div);
+  });
+}
+
+// ===========================
+// DELETE IMAGE
+// ===========================
+async function deleteImage(id) {
+  if (!confirm("Delete this image?")) return;
+
+  const r = await fetch(`/api/image/${id}`, { method: "DELETE" });
+
+  if (r.ok) {
+    loadImages();
+    loadAlbums();
+  } else {
+    alert("Delete failed!");
+  }
+}
+
+// ===========================
+// LOAD ALBUMS
+// ===========================
+async function loadAlbums() {
+  const r = await fetch("/api/albums");
+  const d = await r.json();
+
+  albumsList.innerHTML = "";
+
+  d.albums.forEach((a) => {
+    const div = document.createElement("div");
+    div.className = "list-item";
+
+    div.innerHTML = `
+      <div>
+        <b>${a.title}</b><br>
+        ${a.images.length} images
+      </div>
+
+      <button class="danger" onclick="deleteAlbum('${a._id}')">Delete Album</button>
+    `;
+
+    albumsList.appendChild(div);
+  });
+}
+
+// ===========================
+// DELETE ALBUM
+// ===========================
+async function deleteAlbum(id) {
+  if (!confirm("Delete this entire album?")) return;
+
+  const r = await fetch(`/api/album/${id}`, { method: "DELETE" });
+
+  if (r.ok) {
+    loadAlbums();
+    loadImages();
+  } else {
+    alert("Delete failed!");
+  }
+}
+
+// ===========================
+// LOAD SETTINGS
+// ===========================
+async function loadSettings() {
+  const r = await fetch("/api/admin/settings");
+  const d = await r.json();
+  siteName.value = d.siteName;
+}
+
+// ===========================
+// SAVE SETTINGS
+// ===========================
+settingsForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  await fetch("/api/admin/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ siteName: siteName.value }),
+  });
+
+  alert("Saved ✔");
+});
+
+// ===========================
+// LOGOUT
+// ===========================
+async function logout() {
+  await fetch("/admin/logout", { method: "POST" });
+  location.href = "/admin";
+}
+
+// INITIAL LOAD
+loadImages();
+loadAlbums();
+loadSettings();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Photo Gallery</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">Mallublizz</div>
+
+  <div class="search-wrap">
+    <input id="search" placeholder="What are you looking for?" />
+    <button id="searchBtn">🔍</button>
+  </div>
+
+  <div class="right-actions">
+    <a class="btn" href="/admin">Admin</a>
+  </div>
+</header>
+
+<nav class="category-bar" id="categoryBar">
+  <button class="cat active" data-cat="all">All</button>
+</nav>
+
+<main>
+  <div id="gallery" class="gallery"></div>
+  <div id="loading" class="loading">Loading...</div>
+  <div id="end" class="end">No more images</div>
+</main>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" class="lightbox hidden">
+  <div class="lb-inner">
+    <button id="lbClose" class="close">✕</button>
+
+    <div class="lb-left">
+      <img id="lbImage" src="">
+    </div>
+
+    <div class="lb-right">
+      <h3 id="lbTitle"></h3>
+      <p id="lbDesc"></p>
+
+      <div class="meta">
+        <button id="likeBtn" class="like">❤ <span id="likeCount">0</span></button>
+        <span id="viewCount">0 views</span>
+      </div>
+<div id="lbLinks" class="linksBox" style="
+  margin-top: 15px;
+  padding: 12px;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 10px;
+"></div>
+
+<div class="lb-actions">
+  <button id="lbDeleteBtn" class="btn del hidden">🗑 Delete</button>
+</div>
+
+      <div class="lb-actions">
+
+<div id="lbLinks" class="linksBox"></div>
+
+
+        <button id="lbDeleteBtn" class="btn del hidden">🗑 Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="script.js" defer></script>
+</body>
+</html>
