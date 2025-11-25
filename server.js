@@ -1,4 +1,3 @@
-// ====================== server.js (FULL WORKING VERSION) ======================
 require("dotenv").config();
 
 const express = require("express");
@@ -13,10 +12,13 @@ const { Types } = mongoose;
 
 // -------------------- APP SETUP --------------------
 const app = express();
+
 app.use(cors());
-app.use(express.static(path.join(__dirname, "public")));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ✅ PUBLIC FOLDER STATIC SERVE
+app.use(express.static(path.join(__dirname, "public")));
 
 app.use(
   session({
@@ -60,13 +62,10 @@ const AlbumSchema = new mongoose.Schema({
   description: String,
   category: String,
   tags: [String],
-
   images: [ImageSubSchema],
-
   watchLink: String,
   downloadLink: String,
   extraLinks: [String],
-
   likes: [String],
   views: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },
@@ -94,7 +93,7 @@ async function getSettingsDoc() {
   return s;
 }
 
-// -------------------- MULTER (CLOUDINARY) --------------------
+// -------------------- MULTER CLOUDINARY --------------------
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
@@ -102,6 +101,7 @@ const storage = new CloudinaryStorage({
     allowed_formats: ["jpg", "jpeg", "png", "webp", "mp4", "webm"],
   },
 });
+
 const upload = multer({ storage });
 
 // -------------------- HELPERS --------------------
@@ -116,7 +116,25 @@ function requireAdmin(req, res, next) {
   res.status(401).json({ error: "Unauthorized" });
 }
 
-// -------------------- UPLOAD ALBUM --------------------
+// -------------------- DMCA ROUTE (IMPORTANT FIX) --------------------
+app.get("/dmca", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "dmca.html"));
+});
+
+// -------------------- FRONTEND --------------------
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+app.get("/admin", (req, res) =>
+  res.sendFile(path.join(__dirname, "public", "login.html"))
+);
+
+app.get("/admin/dashboard", requireAdmin, (req, res) =>
+  res.sendFile(path.join(__dirname, "public", "admin.html"))
+);
+
+// -------------------- API ROUTES --------------------
 app.post("/api/upload", upload.array("photos", 100), async (req, res) => {
   try {
     const tags = (req.body.tags || "")
@@ -176,21 +194,16 @@ app.get("/api/images", async (req, res) => {
           imageId: img.id,
           url: img.url,
           public_id: img.public_id,
-
           imageLikesCount: img.likes.length,
           imageViews: img.views,
-
           albumId: album._id.toString(),
           albumTitle: album.title,
-          albumDescription: album.description,
           albumCategory: album.category,
           albumLikesCount: album.likes.length,
           albumViews: album.views,
-
           watchLink: album.watchLink || "",
           downloadLink: album.downloadLink || "",
           extraLinks: album.extraLinks || [],
-
           index,
         });
       });
@@ -202,74 +215,8 @@ app.get("/api/images", async (req, res) => {
   }
 });
 
-// -------------------- VIEW ALBUM --------------------
-app.post("/api/view/album/:id", async (req, res) => {
-  try {
-    const album = await Album.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { views: 1 } },
-      { new: true }
-    );
-
-    if (!album) return res.status(404).json({ error: "Album not found" });
-
-    res.json({ success: true, views: album.views });
-  } catch {
-    res.status(500).json({ error: "Failed" });
-  }
-});
-
-// -------------------- LIKE ALBUM --------------------
-app.post("/api/like/album/:id", async (req, res) => {
-  try {
-    const ip = getIP(req);
-    const album = await Album.findById(req.params.id);
-
-    if (!album) return res.status(404).json({ error: "Album not found" });
-
-    if (!album.likes.includes(ip)) {
-      album.likes.push(ip);
-      await album.save();
-    }
-
-    res.json({ success: true, likes: album.likes.length });
-  } catch {
-    res.status(500).json({ error: "Failed" });
-  }
-});
-
-// -------------------- DELETE IMAGE --------------------
-app.delete("/api/image/:imageId", requireAdmin, async (req, res) => {
-  try {
-    const imageId = req.params.imageId;
-    const album = await Album.findOne({ "images.id": imageId });
-
-    if (!album) return res.status(404).json({ error: "Image not found" });
-
-    album.images = album.images.filter((img) => img.id !== imageId);
-    await album.save();
-
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Failed" });
-  }
-});
-
-// -------------------- DELETE ALBUM --------------------
-app.delete("/api/album/:id", requireAdmin, async (req, res) => {
-  try {
-    const album = await Album.findById(req.params.id);
-    if (!album) return res.status(404).json({ error: "Album not found" });
-
-    await album.deleteOne();
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Delete failed" });
-  }
-});
-
-// -------------------- ADMIN --------------------
-app.post("/admin/login", express.json(), async (req, res) => {
+// -------------------- ADMIN LOGIN --------------------
+app.post("/admin/login", async (req, res) => {
   const settings = await getSettingsDoc();
 
   if (req.body.pin === settings.adminPin) {
@@ -288,36 +235,8 @@ app.post("/admin/logout", (req, res) =>
   req.session.destroy(() => res.json({ success: true }))
 );
 
-// -------------------- SETTINGS --------------------
-app.get("/api/admin/settings", requireAdmin, async (req, res) => {
-  const s = await getSettingsDoc();
-  res.json({
-    siteName: s.siteName,
-    categories: s.categories,
-    adminPinSet: !!s.adminPin,
-  });
-});
-
-app.put("/api/admin/settings", requireAdmin, express.json(), async (req, res) => {
-  const s = await getSettingsDoc();
-
-  if (req.body.siteName !== undefined) s.siteName = req.body.siteName;
-
-  await s.save();
-  res.json({ success: true });
-});
-
-// -------------------- FRONTEND --------------------
-app.get("/admin", (req, res) =>
-  res.sendFile(path.join(__dirname, "public", "login.html"))
-);
-
-app.get("/admin/dashboard", requireAdmin, (req, res) =>
-  res.sendFile(path.join(__dirname, "public", "admin.html"))
-);
-
 // -------------------- START SERVER --------------------
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log("SERVER RUNNING on http://localhost:" + PORT)
-);
+app.listen(PORT, () => {
+  console.log("SERVER RUNNING ON PORT", PORT);
+});
