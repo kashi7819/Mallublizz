@@ -324,3 +324,21 @@ main {
 .linkRow a:hover {
   text-decoration: underline;
 }
+.filter-btn {
+  border: none;
+  padding: 8px 18px;
+  border-radius: 999px;
+  font-size: 14px;
+  cursor: pointer;
+  background: #00d084;
+  color: #000;
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+/* DMCA button same style, but link aanath kond text-decoration remove cheyyam */
+.dmca-btn {
+  text-decoration: none;
+  display: inline-block;
+}
+
